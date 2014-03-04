@@ -1,0 +1,5 @@
+sudo ifconfig eth0 down
+#sudo ifconfig eth0 hw ether 00:26:9e:06:37:9f
+sudo ifconfig eth0 hw ether 00:23:8b:b0:64:b0
+sudo ifconfig eth0 up
+sudo yah3c
