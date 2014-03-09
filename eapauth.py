@@ -43,12 +43,26 @@ class EAPAuth:
         self.client.bind((login_info['ethernet_interface'], ETHERTYPE_PAE))
         # get local ethernet card address
         self.mac_addr = self.client.getsockname()[4]
+        self.ip = ''
         print [hex(i) for i in unpack('B'*len(self.mac_addr),self.mac_addr)]
-       # self.mac_addr = '00238bb064b0'
         self.ethernet_header = get_ethernet_header(self.mac_addr, PAE_GROUP_ADDR, ETHERTYPE_PAE)
- #       self.ethernet_header = get_ethernet_header(self.mac_addr, '\x00\x0f\xe2\xf6j&', ETHERTYPE_PAE)
         self.has_sent_logoff = False
         self.login_info = login_info
+
+    def get_local_ip():  
+        ifname = login_info(['ethernet_interface'])
+        import fcntl 
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  
+        inet = fcntl.ioctl(s.fileno(), 0x8915, pack('256s', ifname[:15]))  
+        ret = socket.inet_ntoa(inet[20:24])  
+        return ret
+
+    def get_ip(self):
+        try:
+            self.ip = get_local_ip()
+            return True
+        except:
+            return False
 
     def send_start(self):
         # sent eapol start packet
@@ -67,7 +81,11 @@ class EAPAuth:
         display_prompt(Fore.GREEN, 'Sending EAPOL logoff')
 
     def send_response_id(self, packet_id):
-        data = '\x15\x04'+'\xdb\xf5\x47\x59' + '\x06\x07'  
+        data = '\x15\x04'
+        if self.get_ip():
+            data += ''.join([chr(int(i)) for i in self.ip.split('.')])+ '\x06\x07'
+        else:
+            data +='\x00\x00\x00\x00\x06\x07'
         data += self.fillbase64area()
 
         id_msg = self.ethernet_header + get_EAPOL(EAPOL_EAPPACKET, pack('!BBHB', EAP_RESPONSE, packet_id, len(data)+5, EAP_TYPE_ID) + data
@@ -78,7 +96,6 @@ class EAPAuth:
     def send_response_noti(self, packet_id):
         data = '\x01\x16'
         data += self.fillclientversion() + '\x02\x16' + self.fillwindowsversion()
-       # data += '\x68\x67\x6c\x14\x15\x57\x32\x75\x2c\x4b\x4f\x6b\x2c\x05\x78\x7c\x54\x5a\xa9\xe7\x02\x16\x39\x68\x3c\x1c\x00\x38\x46\x0b\x17\x7c\x7c\x17\x0b\x46\x08\x32\x32\x08F\x0b'
         noti_msg = self.ethernet_header + get_EAPOL(EAPOL_EAPPACKET, pack('!BBHB', EAP_RESPONSE, packet_id, len(data)+5, EAP_TYPE_NOTI)+ data)
         self.client.send(noti_msg)
         print 'send response noti : ' + repr(noti_msg)
@@ -102,7 +119,10 @@ class EAPAuth:
 
     def send_response_avai(self, packet_id):
         data = '\x00\x15\x04'
-        data += ''.join([chr(int(i)) for i in '219.245.71.89'.split('.')])+ '\x06\x07'
+        if self.get_ip():
+            data += ''.join([chr(int(i)) for i in self.ip.split('.')])+ '\x06\x07'
+        else:
+            data +='\x00\x00\x00\x00\x06\x07'
         data += self.fillbase64area()
         data += '  '
         data += self.login_info['username']
@@ -209,7 +229,7 @@ class EAPAuth:
             
             if self.login_info['dhcp_command']:
                 display_prompt(Fore.YELLOW, 'Obtaining IP Address:')
-                call([self.login_info['dhcp_command'], self.login_info['ethernet_interface']])
+                call( ['nohup', self.login_info['dhcp_command'], self.login_info['ethernet_interface']])
 
             '''
             if self.login_info['daemon'] == 'True':
@@ -271,7 +291,6 @@ class EAPAuth:
             while True:
                 eap_packet = self.client.recv(1600)
                 print(repr(eap_packet))
-                print('test1')
                 self.dstmac = eap_packet[6:12]
                 self.ethernet_header = get_ethernet_header(self.mac_addr, self.dstmac, ETHERTYPE_PAE)
                 # strip the ethernet_header and handle

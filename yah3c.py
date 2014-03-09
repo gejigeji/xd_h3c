@@ -103,8 +103,11 @@ def start_yah3c(login_info):
     yah3c = eapauth.EAPAuth(login_info)
     yah3c.serve_forever()
 
+def modify_MAC():
+    print('You should modify your MAC address at first if local MAC address is not known by server!.')
+
 def main():
-    print('test0')
+    modify_MAC()
     args = parse_arguments()
     args = vars(args)
 
