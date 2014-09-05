@@ -17,7 +17,7 @@ import eapauth
 def usermanager():
     user_info = {}
     user_info['username'] = '1201120226'
-    user_info['password'] = '966733'
+    user_info['password'] = '******'
     user_info['ethernet_interface'] = 'eth0'
     user_info['dhcp_command'] = 'dhclient'
     return user_info
